@@ -1,7 +1,6 @@
 # ==================================
 # --*-- coding: utf-8 --*--
 # @Time    : 2021-03-02
-# @Author  : TRHX
 # @FileName: get_51job_data.py
 # @Software: Sublime Text 3
 # ==================================
@@ -11,6 +10,7 @@ import re
 import time
 import copy
 import requests
+import json
 from lxml import etree
 import pandas as pd
 
@@ -21,6 +21,7 @@ class JobSpider:
         self.base_url = 'https://search.51job.com/list/000000,000000,0000,00,9,99,%s,2,%s.html'
         self.headers = {'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/84.0.4147.13 Safari/537.36'}
         self.keyword = input('请输入关键字：')
+        self.sumdata = []
 
     def tatal_url(self):
     	# 补全网页
@@ -29,9 +30,10 @@ class JobSpider:
         # 转换为Element对象
         tree = etree.HTML(response.content.decode('gbk'))
         # 提取一共有多少页
-        text = tree.xpath("//div[@class='p_in']/span[1]/text()")[0]
-        # 等运行成功了换个方式提取数字看看(☆☆)
-        number = re.findall('[0-9]', text)
+        text = tree.xpath('//script[@type="text/javascript"]/text()')
+        qwq = "".join(text)
+        dic = json.loads(qwq[29:])
+        number = dic['total_page']
         number = int(''.join(number))
         print('%s职位共有%d页' % (self.keyword, number))
         return number
@@ -54,8 +56,13 @@ class JobSpider:
             url = self.base_url % (self.keyword, str(num))
             response = requests.get(url=url, headers=self.headers)
             tree = etree.HTML(response.content.decode('gbk'))
-            # xpath为"//div[@class='j_joblist']/div[@class='e']/a[@class='el']/@href"精简,有错可再修改
-            detail_url1 = tree.xpath("//a[@class='el']/@href")
+            text1 = tree.xpath('//script[@type="text/javascript"]/text()')
+            qwq1 = "".join(text1)
+            dic1 = json.loads(qwq1[29:])
+            detail_url1 = []
+            k = dic1['engine_search_result']
+            for j in k:
+            	detail_url1.append(j['job_href'])
 
             """
             深拷贝一个 url 列表，如果有连续的不满足要求的链接，若直接在原列表里面删除，
@@ -72,6 +79,7 @@ class JobSpider:
             print('第%d页数据爬取完毕！' % num)
             time.sleep(2)
         print('所有数据爬取完毕！')
+        deal(self.sumdata)
 
     def parse_data(self, urls):
 
@@ -93,6 +101,7 @@ class JobSpider:
         company_industry:    公司行业
         company_information: 公司信息
         """
+
 
         for url in urls:
             response = requests.get(url=url, headers=self.headers)
@@ -137,38 +146,15 @@ class JobSpider:
             job_data = [position, wages, region, experience, education, need_people, publish_date,
                         english, welfare_tags, job_information, work_address, company_name,
                         company_nature, company_scale, company_industry, company_information]
+            self.sumdata.append(job_data)
 
-            deal(job_data)
 
-            #save_mongodb(job_data)
 
-def deal(q):
-	df = pd.DataFrame(a)
-	df.to_excel('data.xlsx',index = False)
+def deal(data):
+	df = pd.DataFrame(data)
+	index = ['职位','工资','地区','经验','学历','招聘人数','发布时间','英语要求','福利标签','职位信息','上班地址','公司名称','公司性质','公司规模','公司行业','公司信息']
+	df.to_excel(self.keyword+'.xlsx',index = index)
 
-def save_mongodb(data):
-    client = pymongo.MongoClient(host='localhost', port=27017)
-    db = client.job51_spider
-    collection = db.data
-    save_data = {
-        '职位': data[0],
-        '工资': data[1],
-        '地区': data[2],
-        '经验': data[3],
-        '学历': data[4],
-        '招聘人数': data[5],
-        '发布时间': data[6],
-        '英语要求': data[7],
-        '福利标签': data[8],
-        '职位信息': data[9],
-        '上班地址': data[10],
-        '公司名称': data[11],
-        '公司性质': data[12],
-        '公司规模': data[13],
-        '公司行业': data[14],
-        '公司信息': data[15]
-    }
-    collection.insert_one(save_data)
 
 
 if __name__ == '__main__':
