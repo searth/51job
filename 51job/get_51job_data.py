@@ -11,6 +11,7 @@ import time
 import copy
 import requests
 import json
+import threading
 from lxml import etree
 import pandas as pd
 
@@ -21,6 +22,7 @@ class JobSpider:
         self.base_url = 'https://search.51job.com/list/000000,000000,0000,00,9,99,%s,2,%s.html'
         self.headers = {'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/84.0.4147.13 Safari/537.36'}
         self.keyword = input('请输入关键字：')
+        self.starttime = time.time()
         self.sumdata = []
 
     def tatal_url(self):
@@ -68,7 +70,6 @@ class JobSpider:
             深拷贝一个 url 列表，如果有连续的不满足要求的链接，若直接在原列表里面删除，
             则会漏掉一些链接，因为每次删除后的索引已改变，因此在原列表中提取不符合元素
             后，在深拷贝的列表里面进行删除。最后深拷贝的列表里面的元素均符合要求。
-            (我打算试试用迭代器删除列表元素☆☆)
             """
 
             detail_url2 = copy.deepcopy(detail_url1)
@@ -76,10 +77,14 @@ class JobSpider:
                 if 'jobs.51job.com' not in url:
                     detail_url2.remove(url)
             self.parse_data(detail_url2)
+
             print('第%d页数据爬取完毕！' % num)
             time.sleep(2)
+            if num > 1:
+            	break
         print('所有数据爬取完毕！')
-        deal(self.sumdata)
+        print("耗时：", time.time() - self.starttime)
+        deal(self.sumdata,self.keyword)
 
     def parse_data(self, urls):
 
@@ -104,56 +109,56 @@ class JobSpider:
 
 
         for url in urls:
-            response = requests.get(url=url, headers=self.headers)
-            try:
-                text = response.content.decode('gbk')
-            except UnicodeDecodeError:
-                return
-            tree = etree.HTML(text)
+	        response = requests.get(url=url, headers=self.headers)
+	        try:
+	            text = response.content.decode('gbk')
+	        except UnicodeDecodeError:
+	            return
+	        tree = etree.HTML(text)
 
-            """
-            提取内容时使用 join 方法将列表转为字符串，而不是直接使用索引取值，
-            这样做的好处是遇到某些没有的信息直接留空而不会报错
-            """
+	        """
+	        提取内容时使用 join 方法将列表转为字符串，而不是直接使用索引取值，
+	        这样做的好处是遇到某些没有的信息直接留空而不会报错
+	        """
 
-            position = ''.join(tree.xpath("//div[@class='cn']/h1/text()"))
-            wages = ''.join(tree.xpath("//div[@class='cn']/strong/text()"))
+	        position = ''.join(tree.xpath("//div[@class='cn']/h1/text()"))
+	        wages = ''.join(tree.xpath("//div[@class='cn']/strong/text()"))
 
-            # 经验、学历、招聘人数、发布时间等信息都在一个标签里面，逐一使用列表解析式提取
-            content = tree.xpath("//div[@class='cn']/p[2]/text()")
-            # 去空格
-            content = [i.strip() for i in content]
-            if content:
-                region = content[0]
-            else:
-                region = ''
-            experience = ''.join([i for i in content if '经验' in i])
-            education = ''.join([i for i in content if i in '本科大专应届生在校生硕士'])
-            need_people = ''.join([i for i in content if '招' in i])
-            publish_date = ''.join([i for i in content if '发布' in i])
-            english = ''.join([i for i in content if '英语' in i])
+	        # 经验、学历、招聘人数、发布时间等信息都在一个标签里面，逐一使用列表解析式提取
+	        content = tree.xpath("//div[@class='cn']/p[2]/text()")
+	        # 去空格
+	        content = [i.strip() for i in content]
+	        if content:
+	            region = content[0]
+	        else:
+	            region = ''
+	        experience = ''.join([i for i in content if '经验' in i])
+	        education = ''.join([i for i in content if i in '本科大专应届生在校生硕士'])
+	        need_people = ''.join([i for i in content if '招' in i])
+	        publish_date = ''.join([i for i in content if '发布' in i])
+	        english = ''.join([i for i in content if '英语' in i])
 
-            # 词语用逗号分隔，第一个最后一个都是换行符
-            welfare_tags = ','.join(tree.xpath("//div[@class='jtag']/div//text()")[1:-2])
-            job_information = ''.join(tree.xpath("//div[@class='bmsg job_msg inbox']/p//text()")).replace(' ', '')
-            work_address = ''.join(tree.xpath("//div[@class='bmsg inbox']/p//text()"))
-            company_name = ''.join(tree.xpath("//div[@class='tCompany_sidebar']/div[1]/div[1]/a/p/text()"))
-            company_nature = ''.join(tree.xpath("//div[@class='tCompany_sidebar']/div[1]/div[2]/p[1]//text()"))
-            company_scale = ''.join(tree.xpath("//div[@class='tCompany_sidebar']/div[1]/div[2]/p[2]//text()"))
-            company_industry = ''.join(tree.xpath("//div[@class='tCompany_sidebar']/div[1]/div[2]/p[3]/@title"))
-            company_information = ''.join(tree.xpath("//div[@class='tmsg inbox']/text()"))
+	        # 词语用逗号分隔，第一个最后一个都是换行符
+	        welfare_tags = ','.join(tree.xpath("//div[@class='jtag']/div//text()")[1:-2])
+	        job_information = ''.join(tree.xpath("//div[@class='bmsg job_msg inbox']/p//text()")).replace(' ', '')
+	        work_address = ''.join(tree.xpath("//div[@class='bmsg inbox']/p//text()"))
+	        company_name = ''.join(tree.xpath("//div[@class='tCompany_sidebar']/div[1]/div[1]/a/p/text()"))
+	        company_nature = ''.join(tree.xpath("//div[@class='tCompany_sidebar']/div[1]/div[2]/p[1]//text()"))
+	        company_scale = ''.join(tree.xpath("//div[@class='tCompany_sidebar']/div[1]/div[2]/p[2]//text()"))
+	        company_industry = ''.join(tree.xpath("//div[@class='tCompany_sidebar']/div[1]/div[2]/p[3]/@title"))
+	        company_information = ''.join(tree.xpath("//div[@class='tmsg inbox']/text()"))
 
-            job_data = [position, wages, region, experience, education, need_people, publish_date,
-                        english, welfare_tags, job_information, work_address, company_name,
-                        company_nature, company_scale, company_industry, company_information]
-            self.sumdata.append(job_data)
+	        job_data = [position, wages, region, experience, education, need_people, publish_date,
+	                    english, welfare_tags, job_information, work_address, company_name,
+	                    company_nature, company_scale, company_industry, company_information]
+	        self.sumdata.append(job_data)
 
 
 
-def deal(data):
-	df = pd.DataFrame(data)
+def deal(data,keyword):
 	index = ['职位','工资','地区','经验','学历','招聘人数','发布时间','英语要求','福利标签','职位信息','上班地址','公司名称','公司性质','公司规模','公司行业','公司信息']
-	df.to_excel(self.keyword+'.xlsx',index = index)
+	df = pd.DataFrame(data,columns = index)
+	df.to_excel(keyword+'.xlsx')
 
 
 
