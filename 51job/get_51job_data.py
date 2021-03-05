@@ -11,7 +11,6 @@ import time
 import copy
 import requests
 import json
-import threading
 from lxml import etree
 import pandas as pd
 
@@ -80,8 +79,7 @@ class JobSpider:
 
             print('第%d页数据爬取完毕！' % num)
             time.sleep(2)
-            if num > 1:
-            	break
+
         print('所有数据爬取完毕！')
         print("耗时：", time.time() - self.starttime)
         deal(self.sumdata,self.keyword)
@@ -158,7 +156,8 @@ class JobSpider:
 def deal(data,keyword):
 	index = ['职位','工资','地区','经验','学历','招聘人数','发布时间','英语要求','福利标签','职位信息','上班地址','公司名称','公司性质','公司规模','公司行业','公司信息']
 	df = pd.DataFrame(data,columns = index)
-	df.to_excel(keyword+'.xlsx')
+	df.to_excel(keyword+'.xls',index = False)
+
 
 
 

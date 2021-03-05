@@ -1,28 +1,20 @@
 # ==================================
 # --*-- coding: utf-8 --*--
-# @Time    : 2020-07-11
-# @Author  : TRHX
-# @Blog    : www.itrhx.com
-# @CSDN    : itrhx.blog.csdn.net
+# @Time    : 2021-03-05
 # @FileName: draw_bar_chart.py
-# @Software: PyCharm
+# @Software: Sublime Text 3
 # ==================================
 
 
-import pymongo
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
 
 def processing_data():
-    # 连接数据库，从数据库读取数据（也可以导出后从文件中读取）
-    client = pymongo.MongoClient(host='localhost', port=27017)
-    db = client.job51_spider
-    collection = db.data
+    # 从文件中读取
+    data = pd.read_excel("数据.xls",index_col=0)
 
-    # 读取数据并转换为 DataFrame 对象
-    data = pd.DataFrame(list(collection.find()))
     data = data[['工资', '经验', '学历']]
 
     # 使用正则表达式选择空白的字段并填充为缺失值，然后删除带有缺失值的所有行
@@ -100,7 +92,7 @@ def wages_experience_chart(data):
     plt.bar(x, y, color=color)
     for a, b in zip(x, y):
         plt.text(a, b, b, ha='center', va='bottom')
-    plt.title('Python 相关职位经验与平均薪资关系', fontsize=13)
+    plt.title('数据 相关职位经验与平均薪资关系', fontsize=13)
     plt.xlabel('经验', fontsize=13)
     plt.ylabel('平均薪资（元 / 月）', fontsize=13)
     plt.savefig('wages_experience_chart.png')
@@ -124,7 +116,7 @@ def wages_education_chart(data):
     plt.bar(x, y, color=color)
     for a, b in zip(x, y):
         plt.text(a, b, b, ha='center', va='bottom')
-    plt.title('Python 相关职位学历与平均薪资关系', fontsize=13)
+    plt.title('数据 相关职位学历与平均薪资关系', fontsize=13)
     plt.xlabel('学历', fontsize=13)
     plt.ylabel('平均薪资（元 / 月）', fontsize=13)
     plt.savefig('wages_education_chart.png')
